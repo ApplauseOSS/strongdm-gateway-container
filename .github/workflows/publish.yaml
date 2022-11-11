@@ -1,0 +1,49 @@
+name: Builds checks
+on:
+  push:
+    branches:
+      - master
+    tags: ['v*.*.*']
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: applauseoss/strongdm-gateway-container
+
+jobs:
+  build-and-publish-amd64:
+    runs-on: [self-hosted, medium, amd64]
+    steps:
+      - uses: docker/metadata-action@v3
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            latest=false
+            suffix=-amd64
+      - name: build
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-and-publish-arm64:
+    runs-on: [self-hosted, medium, arm64]
+    steps:
+      - uses: docker/metadata-action@v3
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            latest=false
+            suffix=-arm64v8
+      - name: build
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
