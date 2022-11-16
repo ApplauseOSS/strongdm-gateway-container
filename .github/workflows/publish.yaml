@@ -6,8 +6,7 @@ on:
     tags: ['v*.*.*']
 
 env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: applauseoss/strongdm-gateway-container
+  IMAGE_NAME: applause/strongdm-gateway
 
 jobs:
   build-amd64:
@@ -26,16 +25,10 @@ jobs:
         with:
           endpoint: builders
       - name: Login to Docker Hub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
-      - name: Login to GHCR
-        uses: docker/login-action@v1
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/cache@v3
         with:
           path: /tmp/.buildx-cache
@@ -47,7 +40,6 @@ jobs:
         with:
           images: |
             ${{ env.IMAGE_NAME }}
-            ghcr.io/${{ env.IMAGE_NAME }}
           flavor: |
             latest=false
             suffix=-amd64
@@ -91,16 +83,10 @@ jobs:
         with:
           endpoint: builders
       - name: Login to Docker Hub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
-      - name: Login to GHCR
-        uses: docker/login-action@v1
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/cache@v3
         with:
           path: /tmp/.buildx-cache
@@ -112,7 +98,6 @@ jobs:
         with:
           images: |
             ${{ env.IMAGE_NAME }}
-            ghcr.io/${{ env.IMAGE_NAME }}
           flavor: |
             latest=false
             suffix=-arm64v8
@@ -157,16 +142,10 @@ jobs:
         with:
           endpoint: builders
       - name: Login to Docker Hub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
-      - name: Login to GHCR
-        uses: docker/login-action@v1
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
       - id: meta-dockerhub
         name: Metadata - Docker Hub
         uses: docker/metadata-action@v4
@@ -190,64 +169,25 @@ jobs:
           tags: |
             # Only version, no revision
             type=match,pattern=v(.*)-(.*),group=1
-      - id: meta-ghcr
-        name: Metadata - GHCR
-        uses: docker/metadata-action@v4
-        with:
-          images: ghcr.io/${{ env.IMAGE_NAME }}
-          flavor: |
-            latest=false
-          tags: |
-            # branch
-            type=ref,event=branch
-            # semver
-            type=semver,pattern={{version}}
-      - id: meta-ghcr-tag
-        name: Metadata - GHCR (Tags)
-        uses: docker/metadata-action@v4
-        with:
-          images: |
-            ghcr.io/${{ env.IMAGE_NAME }}
-          flavor: |
-            latest=false
-          tags: |
-            # Only version, no revision
-            type=match,pattern=v(.*)-(.*),group=1
       # Manifest for either branch or semver
       - name: manifest-dockerhub
         run: docker manifest create ${{ steps.meta-dockerhub.outputs.tags }} --amend ${{ steps.meta-dockerhub.outputs.tags }}-amd64 --amend ${{ steps.meta-dockerhub.outputs.tags }}-arm64v8
-      - name: manifest-ghcr
-        run: docker manifest create ${{ steps.meta-ghcr.outputs.tags }} --amend ${{ steps.meta-ghcr.outputs.tags }}-amd64 --amend ${{ steps.meta-ghcr.outputs.tags }}-arm64v8
       # Optional manifest for latest
       - name: manifest-dockerhub-latest
         run: docker manifest create ${{ env.IMAGE_NAME }}:latest --amend ${{ steps.meta-dockerhub.outputs.tags }}-amd64 --amend ${{ steps.meta-dockerhub.outputs.tags }}-arm64v8
-        if: startsWith(github.ref, 'refs/tags/')
-      - name: manifest-ghcr-latest
-        run: docker manifest create ghcr.io/${{ env.IMAGE_NAME }}:latest --amend ${{ steps.meta-ghcr.outputs.tags }}-amd64 --amend ${{ steps.meta-ghcr.outputs.tags }}-arm64v8
         if: startsWith(github.ref, 'refs/tags/')
       # Optional manifest for tag versions (includes revisions)
       - name: manifest-dockerhub-tags
         run: docker manifest create ${{ steps.meta-dockerhub-tag.outputs.tags }} --amend ${{ steps.meta-dockerhub-tag.outputs.tags }}-amd64 --amend ${{ steps.meta-dockerhub-tag.outputs.tags }}-arm64v8
         if: startsWith(github.ref, 'refs/tags/')
-      - name: manifest-ghcr-tags
-        run: docker manifest create ${{ steps.meta-ghcr-tag.outputs.tags }} --amend ${{ steps.meta-ghcr-tag.outputs.tags }}-amd64 --amend ${{ steps.meta-ghcr-tag.outputs.tags }}-arm64v8
-        if: startsWith(github.ref, 'refs/tags/')
       # Push various manifests
       - name: push-dockerhub
         run: docker manifest push ${{ steps.meta-dockerhub.outputs.tags }}
-      - name: push-ghcr
-        run: docker manifest push ${{ steps.meta-ghcr.outputs.tags }}
       - name: push-dockerhub-latest
         run: docker manifest push ${{ env.IMAGE_NAME }}:latest
         if: startsWith(github.ref, 'refs/tags/')
-      - name: push-ghcr-latest
-        run: docker manifest push ghcr.io/${{ env.IMAGE_NAME }}:latest
-        if: startsWith(github.ref, 'refs/tags/')
       - name: push-dockerhub-tags
         run: docker manifest push ${{ steps.meta-dockerhub-tag.outputs.tags }}
-        if: startsWith(github.ref, 'refs/tags/')
-      - name: push-ghcr-tags
-        run: docker manifest push ${{ steps.meta-ghcr-tag.outputs.tags }}
         if: startsWith(github.ref, 'refs/tags/')
       # Update Docker Hub from README
       - name: Docker Hub Description
