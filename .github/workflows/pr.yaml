@@ -6,7 +6,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: applauseoss/strongdm-gateway-container
+  IMAGE_NAME: applause/strongdm-gateway
 
 jobs:
   Run-CI-Script:
