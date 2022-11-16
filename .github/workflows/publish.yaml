@@ -193,11 +193,11 @@ jobs:
       - name: Docker Hub Description
         uses: peter-evans/dockerhub-description@v3
         with:
-          username: cloudstruct
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
           repository: ${{ env.IMAGE_NAME }}
           readme-filepath: ./README.md
-          short-description: "Cardano Node built from source on Debian"
+          short-description: "A container image which will automatically register itself as a strongDM gateway."
 
   github-release:
     runs-on: ubuntu-latest
