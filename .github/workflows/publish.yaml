@@ -46,6 +46,8 @@ jobs:
           tags: |
             # Only version, no revision
             type=match,pattern=v(.*)-(.*),group=1
+            # Semantic versioning from our tags
+            type=semver,pattern={{version}}
             # branch
             type=ref,event=branch
             # semver
@@ -104,6 +106,8 @@ jobs:
           tags: |
             # Only version, no revision
             type=match,pattern=v(.*)-(.*),group=1
+            # Semantic versioning from our tags
+            type=semver,pattern={{version}}
             # branch
             type=ref,event=branch
             # semver
@@ -169,6 +173,8 @@ jobs:
           tags: |
             # Only version, no revision
             type=match,pattern=v(.*)-(.*),group=1
+            # Semantic versioning from our tags
+            type=semver,pattern={{version}}
       # Manifest for either branch or semver
       - name: manifest-dockerhub
         run: docker manifest create ${{ steps.meta-dockerhub.outputs.tags }} --amend ${{ steps.meta-dockerhub.outputs.tags }}-amd64 --amend ${{ steps.meta-dockerhub.outputs.tags }}-arm64v8
