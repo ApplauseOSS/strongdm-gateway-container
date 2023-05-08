@@ -10,7 +10,7 @@ env:
 
 jobs:
   build-amd64:
-    runs-on: [self-hosted, medium, amd64]
+    runs-on: ubuntu-22.04
     permissions:
       contents: read
       packages: write
@@ -70,7 +70,7 @@ jobs:
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
   build-arm64:
-    runs-on: [self-hosted, medium, arm64]
+    runs-on: ubuntu-22.04
     permissions:
       contents: read
       packages: write
@@ -130,7 +130,7 @@ jobs:
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
   multi-arch-manifest:
-    runs-on: [self-hosted, medium, amd64]
+    runs-on: ubuntu-22.04
     needs: [build-amd64, build-arm64]
     permissions:
       contents: read
@@ -206,7 +206,7 @@ jobs:
           short-description: "A container image which will automatically register itself as a strongDM gateway."
 
   github-release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [multi-arch-manifest]
     steps:
       - run: "echo \"RELEASE_TAG=${GITHUB_REF#refs/tags/}\" >> $GITHUB_ENV"
