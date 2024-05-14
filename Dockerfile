@@ -1,4 +1,4 @@
-FROM debian:buster-slim as sdmrelay
+FROM debian:bookworm-slim as sdmrelay
 # Install SDM CLI
 WORKDIR /usr/local/bin
 RUN apt-get update && \
