@@ -1,0 +1,48 @@
+# Default values for sdm-gateway
+
+sdm:
+  admin:
+    # This value should be a base64-encoded SDM admin token with at least "relay:create" permissions
+    token: CHANGEME
+  gateway:
+    enabled: true
+    image: applause/strongdm-gateway:1.2.2
+    port: 5000
+    replicas: 3
+    eip:
+      enabled: true
+      image: amazon/aws-cli:2.15.62
+      tag: ec2_instance
+      value: dev_gateway
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+              - key: subnet
+                operator: In
+                values:
+                - public
+    hostNetwork: true
+    nodeSelector:
+      sdm: "true"
+    resources:
+      requests:
+        cpu: 500m
+        memory: 64Mi
+      limits:
+        cpu: 3
+        memory: 1Gi
+    # the number of pods is equal to number of nodes and we can't fit two pods on same node
+    strategy:
+      rollingUpdate:
+        maxSurge: 0
+  logExporter:
+    enabled: true
+    image: applause/strongdm-log-export:1.0.43.2
+    sumoLogic:
+      # This value is the endpoint URL from sumologic
+      endpoint: ENDPOINT
+      # This value is the category in sumologic for this data
+      sourceCategory: CATEGORY
+    resources: {}

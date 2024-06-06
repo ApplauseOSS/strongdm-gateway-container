@@ -1,0 +1,25 @@
+# configmap for eip-attach init container
+{{- if .Values.sdm.gateway.eip.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: eip-attach-script
+  labels:
+    app: eip-attach-script
+data:
+  eip-attach.sh: |-
+    #!/bin/bash
+    METADATA_TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+    AZ=$(curl -s -H "X-aws-ec2-metadata-token: $METADATA_TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .availabilityZone)
+    INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $METADATA_TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
+    INTERFACE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $METADATA_TOKEN" "http://169.254.169.254/latest/meta-data/network/interfaces/macs/$(</sys/class/net/eth0/address)/interface-id")
+    REGION=$(curl -s -H "X-aws-ec2-metadata-token: $METADATA_TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region)
+    # start EIP attachment loop
+    while [[ $(aws ec2 describe-addresses --region ${REGION} --filters Name=instance-id,Values=${INSTANCE_ID} --query 'Addresses[0].InstanceId' --output text) != ${INSTANCE_ID} ]]; do
+      EIP_ALLOCATION_ID=$(aws ec2 describe-addresses --region ${REGION} --filters Name=tag:{{ .Values.sdm.gateway.eip.tag }},Values={{ .Values.sdm.gateway.eip.value }} Name=tag:az,Values=${AZ} --query 'Addresses[*].AllocationId | [0]' --output text)
+      aws ec2 associate-address --region ${REGION} --allocation-id ${EIP_ALLOCATION_ID} --network-interface-id ${INTERFACE_ID} --allow-reassociation
+    done
+    # We have our EIP, let's write out the address to disk
+    EIP_ADDR=$(aws ec2 describe-addresses --region ${REGION} --filters Name=tag:{{ .Values.sdm.gateway.eip.tag }},Values={{ .Values.sdm.gateway.eip.value }} Name=tag:az,Values=${AZ} --query 'Addresses[0].PublicIp' --output text)
+    echo "export SDM_RELAY_ADDR=${EIP_ADDR}" > /config/public-ipv4
+{{- end }}

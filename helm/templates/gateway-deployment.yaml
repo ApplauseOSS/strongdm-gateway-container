@@ -1,0 +1,137 @@
+{{- if .Values.sdm.gateway.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app: sdm-gateway
+spec:
+  replicas: {{ .Values.sdm.gateway.replicas }}
+  selector:
+    matchLabels:
+      app: sdm-gateway
+{{- if .Values.sdm.gateway.strategy }}
+  strategy:
+{{ toYaml .Values.sdm.gateway.strategy | indent 4 }}
+{{- end }}
+  template:
+    metadata:
+      annotations:
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
+{{- if .Values.sdm.gateway.podAnnotations }}
+{{ toYaml .Values.sdm.gateway.podAnnotations | indent 8 }}
+{{- end }}
+      labels:
+        app: sdm-gateway
+    spec:
+{{- if .Values.sdm.gateway.affinity }}
+      affinity:
+{{ toYaml .Values.sdm.gateway.affinity | indent 8 }}
+{{- end }}
+      hostNetwork: {{ .Values.sdm.gateway.hostNetwork }}
+{{- if .Values.sdm.gateway.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.sdm.gateway.nodeSelector | indent 8 }}
+{{- end }}
+{{- if or .Values.sdm.gateway.eip.enabled .Values.sdm.gateway.initContainers }}
+      initContainers:
+{{- if .Values.sdm.gateway.eip.enabled }}
+      - name: eip-attach
+        image: {{ .Values.sdm.gateway.eip.image }}
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/bash
+        - /usr/local/bin/eip-attach.sh
+        volumeMounts:
+        - name: eip-attach-script
+          mountPath: /usr/local/bin/eip-attach.sh
+          subPath: eip-attach.sh
+        - name: config-dir
+          mountPath: /config
+{{- end }}
+{{- if .Values.sdm.gateway.initContainers }}
+{{ toYaml .Values.sdm.gateway.initContainers | indent 8 }}
+{{- end }}
+{{- end }}
+      containers:
+      - name: sdm-gateway
+        image: {{ .Values.sdm.gateway.image }}
+        imagePullPolicy: Always
+{{- if .Values.sdm.gateway.eip.enabled }}
+        command:
+        - /bin/bash
+        - -c
+        - >-
+          source /config/public-ipv4 &&
+          /docker-entrypoint.sh
+{{- end }}
+        env:
+          - name: SDM_ORCHESTRATOR_PROBES
+            value: ":9090"
+          - name: SDM_ADMIN_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Chart.Name }}-admin-token
+                key: token
+          - name: SDM_RELAY_PORT
+            value: "{{ .Values.sdm.gateway.port }}"
+          - name: SDM_RELAY_TOKEN_FILE
+            value: /config/token.txt
+          - name: SDM_RELAY_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+        livenessProbe:
+          httpGet:
+            path: /liveness
+            port: 9090
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        ports:
+        - name: proxy
+          containerPort: {{ .Values.sdm.gateway.port }}
+        resources: {{ toYaml .Values.sdm.gateway.resources | nindent 10 }}
+        volumeMounts:
+        - name: config-dir
+          mountPath: /config
+{{- if .Values.sdm.logExporter.enabled }}
+        - name: log-dir
+          mountPath: /home/sdmuser/logs
+{{- end }}
+{{- if .Values.sdm.logExporter.enabled }}
+      - name: log-exporter
+        image: {{ .Values.sdm.logExporter.image }}
+        imagePullPolicy: Always
+        env:
+          - name: LOG_EXPORT_CONTAINER_INPUT
+            value: file-json
+          - name: LOG_FILE_PATH
+            value: '/var/log/sdm/*.log'
+          - name: LOG_EXPORT_CONTAINER_OUTPUT
+            value: sumologic
+          - name: SUMOLOGIC_ENDPOINT
+            value: {{ .Values.sdm.logExporter.sumoLogic.endpoint }}
+          - name: SUMOLOGIC_SOURCE_CATEGORY
+            value: {{ .Values.sdm.logExporter.sumoLogic.sourceCategory }}
+        resources: {{ toYaml .Values.sdm.logExporter.resources | nindent 10 }}
+        volumeMounts:
+        - name: log-dir
+          mountPath: /var/log/sdm
+{{- end }}
+{{- if .Values.sdm.gateway.tolerations }}
+      tolerations:
+{{ toYaml .Values.sdm.gateway.tolerations | indent 8 }}
+{{- end }}
+      volumes:
+      - name: config-dir
+        emptyDir: {}
+{{- if .Values.sdm.logExporter.enabled }}
+      - name: log-dir
+        emptyDir: {}
+{{- end }}
+{{- if .Values.sdm.gateway.eip.enabled }}
+      - name: eip-attach-script
+        configMap:
+          name: eip-attach-script
+{{- end }}
+{{- end }}
