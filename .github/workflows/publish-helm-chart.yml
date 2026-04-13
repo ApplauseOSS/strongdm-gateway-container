@@ -7,6 +7,7 @@ on:
       - '*'
     paths:
       - 'helm/**'
+      - '.github/workflows/publish-helm-chart.yml'
 
 concurrency: ${{ github.ref }}
 
@@ -28,10 +29,11 @@ jobs:
           TOKEN: "${{ secrets.GITHUB_TOKEN }}"
           USER: "${{ github.repository_owner }}"
         run: |
+          set -x
           rm -rf dist
           mkdir dist
           helm package helm/ -d dist/
-          echo "${TOKEN}" | helm registry login "${REGISTRY}/${REPOSITORY,,}" -u "${USER}" --password-stdin
+          echo "${TOKEN}" | helm registry login "${REGISTRY}" -u "${USER}" --password-stdin
           for file in dist/*; do
             helm push "$file" "oci://${REGISTRY}/${REPOSITORY,,}/charts"
           done
