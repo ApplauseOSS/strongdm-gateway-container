@@ -9,10 +9,11 @@ metadata:
 data:
   eip-attach.sh: |-
     #!/bin/bash
+    iface_name=$(cd /sys/class/net; for i in {eth,ens}*; do [[ ! -e $i ]] && continue; echo -n "$i:"; cat $i/ifindex; done | sort -t: -k2 | head -n 1 | cut -d: -f1)
     METADATA_TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
     AZ=$(curl -s -H "X-aws-ec2-metadata-token: $METADATA_TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .availabilityZone)
     INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $METADATA_TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
-    INTERFACE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $METADATA_TOKEN" "http://169.254.169.254/latest/meta-data/network/interfaces/macs/$(</sys/class/net/eth0/address)/interface-id")
+    INTERFACE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $METADATA_TOKEN" "http://169.254.169.254/latest/meta-data/network/interfaces/macs/$(</sys/class/net/${iface_name}/address)/interface-id")
     REGION=$(curl -s -H "X-aws-ec2-metadata-token: $METADATA_TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region)
     # start EIP attachment loop
     while [[ $(aws ec2 describe-addresses --region ${REGION} --filters Name=instance-id,Values=${INSTANCE_ID} --query 'Addresses[0].InstanceId' --output text) != ${INSTANCE_ID} ]]; do
