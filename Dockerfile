@@ -6,7 +6,8 @@ RUN apt-get update && \
   curl -fsSLo sdm.zip $(curl https://app.strongdm.com/releases/upgrade\?os\=linux\&arch\=$(uname -m | sed -e 's:x86_64:amd64:' -e 's:aarch64:arm64:')\&software\=sdm-cli\&version\=productionexample | jq ".url" -r) && \
   unzip sdm.zip && \
   rm sdm.zip && \
-  chmod g+rx sdm && \
+  chmod g+rwx sdm && \
+  chmod g+w /usr/local/bin && \
   apt-get remove -y --purge curl zip jq
 # Setup non-root user
 ENV HOME=/home/sdmuser \
